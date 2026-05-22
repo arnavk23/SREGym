@@ -434,6 +434,16 @@ def _run_driver_and_shutdown(
 
 
 def main(args):
+    # Ensure console streams use UTF-8 on Windows to avoid UnicodeEncodeError
+    try:
+        if hasattr(sys, "stdout") and hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8")
+        if hasattr(sys, "stderr") and hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        # best-effort only; if this fails we'll still attempt to continue
+        pass
+
     # set up the logger
     init_logger()
 

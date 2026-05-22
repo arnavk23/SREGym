@@ -600,12 +600,30 @@ class Conductor:
             "kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/"
             "releases/latest/download/components.yaml"
         )
-        self.kubectl.exec_command(
-            "kubectl -n kube-system patch deployment metrics-server "
-            "--type=json -p='["
-            '{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"},'
-            '{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-preferred-address-types=InternalIP"}'
-            "]'"
+        self.kubectl.patch_deployment(
+            name="metrics-server",
+            namespace="kube-system",
+            patch_body={
+                "spec": {
+                    "template": {
+                        "spec": {
+                            "containers": [
+                                {
+                                    "name": "metrics-server",
+                                    "args": [
+                                        "--cert-dir=/tmp",
+                                        "--secure-port=10250",
+                                        "--kubelet-insecure-tls",
+                                        "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
+                                        "--kubelet-use-node-status-port",
+                                        "--metric-resolution=15s",
+                                    ],
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
         )
         self.kubectl.wait_for_ready("kube-system")
 
@@ -620,7 +638,9 @@ class Conductor:
             "kubectl patch storageclass openebs-hostpath "
             '-p \'{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}\''
         )
-        self.kubectl.wait_for_ready("openebs")
+        self.kubectl.exec_command("kubectl rollout status deployment/openebs-localpv-provisioner -n openebs --timeout=120s")
+        # The NDM components are not required to start the hotel-reservation app and
+        # can stall on some kind/docker setups, so do not gate startup on them.
 
         print("Setting up OpenEBS LocalPV-Device…")
         device_sc_yaml = """

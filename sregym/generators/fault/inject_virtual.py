@@ -2,6 +2,7 @@
 
 import copy
 import json
+import tempfile
 import time
 from pathlib import Path
 
@@ -21,6 +22,9 @@ class VirtualizationFaultInjector(FaultInjector):
         self.mongo_service_pod_map = {
             "url-shorten-mongodb": "url-shorten-service",
         }
+
+    def _temp_file_path(self, filename: str) -> Path:
+        return Path(tempfile.gettempdir()) / filename
 
     def delete_service_pods(self, target_service_pods: list[str]):
         """Kill the corresponding service pod to enforce the fault."""
@@ -2444,7 +2448,7 @@ class VirtualizationFaultInjector(FaultInjector):
         """Helper function to write YAML content to a temporary file."""
         import yaml
 
-        file_path = f"/tmp/{service_name}_modified.yaml"
+        file_path = self._temp_file_path(f"{service_name}_modified.yaml")
         with open(file_path, "w") as file:
             yaml.dump(yaml_content, file)
         return file_path

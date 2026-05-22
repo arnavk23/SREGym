@@ -34,7 +34,7 @@ def init_logger():
         path = f"{log_dir}/sregym_{timestamp}.log"
         os.makedirs(log_dir, exist_ok=True)
 
-        handler = logging.FileHandler(path)
+        handler = logging.FileHandler(path, encoding="utf-8")
         # add code line and filename and function name
         handler.setFormatter(
             ExhaustInfoFormatter(

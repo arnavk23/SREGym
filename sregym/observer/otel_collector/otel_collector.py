@@ -1,5 +1,6 @@
 import logging
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -33,13 +34,23 @@ class OtelCollector:
         ExternalName redirect in app namespaces.
         """
         self.run_cmd(f"kubectl -n {self.namespace} delete svc jaeger-backend --ignore-not-found")
-        manifest = (
-            '{"apiVersion":"v1","kind":"Service","metadata":{"name":"jaeger-backend",'
-            f'"namespace":"{self.namespace}"'
-            '},"spec":{"ports":[{"port":4317,"name":"otlp-grpc"},{"port":16686,"name":"ui"}],'
-            '"selector":{"app-name":"jaeger"}}}'
-        )
-        self.run_cmd(f"echo '{manifest}' | kubectl apply -f -")
+        manifest = f"""apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-backend
+  namespace: {self.namespace}
+spec:
+  ports:
+    - port: 4317
+      name: otlp-grpc
+    - port: 16686
+      name: ui
+  selector:
+    app-name: jaeger
+"""
+        manifest_path = Path(tempfile.gettempdir()) / "jaeger-backend-service.yaml"
+        manifest_path.write_text(manifest, encoding="utf-8")
+        self.run_cmd(f"kubectl apply -f {manifest_path}")
 
     def _wait_for_ready(self, timeout: int = 120):
         """Wait until the OTel Collector pod is ready."""
