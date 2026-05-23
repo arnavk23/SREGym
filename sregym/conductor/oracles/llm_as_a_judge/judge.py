@@ -307,110 +307,14 @@ fences, no preamble, no commentary.
         )
 
         if self.backend is None:
-            if not isinstance(solution, str):
-                solution = str(solution)
-
-            if not solution.strip():
-                return self._empty_report()
-
-            stop_words = {
-                "a",
-                "an",
-                "and",
-                "are",
-                "as",
-                "at",
-                "be",
-                "by",
-                "for",
-                "from",
-                "has",
-                "have",
-                "in",
-                "is",
-                "it",
-                "its",
-                "of",
-                "on",
-                "or",
-                "that",
-                "the",
-                "this",
-                "to",
-                "was",
-                "with",
-            }
-
-            def normalize(text: str) -> set[str]:
-                return {
-                    token
-                    for token in re.findall(r"[a-z0-9]+", text.lower())
-                    if token not in stop_words and len(token) > 2
-                }
-
-            expected_tokens = normalize(expectation)
-            solution_tokens = normalize(solution)
-            overlap = len(expected_tokens & solution_tokens) / max(1, len(expected_tokens))
-
-            expectation_lc = expectation.lower()
-            solution_lc = solution.lower()
-            mentions_pdb_fault = any(
-                phrase in expectation_lc for phrase in ("poddisruptionbudget", "pdb", "disruption budget")
-            )
-            mentions_pdb_fix = any(
-                phrase in solution_lc for phrase in ("poddisruptionbudget", "pdb", "disruption budget")
-            )
-            mentions_blocking_detail = any(
-                phrase in solution_lc
-                for phrase in (
-                    "minavailable",
-                    "alloweddisruptions",
-                    "drain",
-                    "evict",
-                    "eviction",
-                    "cordon",
-                    "cordoned",
-                    "replica",
-                    "replicas",
-                )
-            )
-
-            is_correct = overlap >= 0.35 or (mentions_pdb_fault and mentions_pdb_fix and mentions_blocking_detail)
-            verdict = JudgmentResult.TRUE if is_correct else JudgmentResult.FALSE
-
-            dimensions = []
-            for dim in self._config["dimensions"]:
-                qs = [
-                    QuestionResult(
-                        question_id=q["id"],
-                        question_text=q["text"],
-                        answer=is_correct,
-                        evidence="heuristic fallback matched diagnosis text" if is_correct else "heuristic fallback did not match",
-                        confidence="Medium" if is_correct else "Low",
-                    )
-                    for q in dim["questions"]
-                ]
-                dimensions.append(
-                    DimensionResult(
-                        dimension_id=dim["id"],
-                        dimension_name=dim["name"],
-                        score=1.0 if is_correct else 0.0,
-                        questions=qs,
-                    )
-                )
-
-            composite = 1.0 if is_correct else 0.0
-            reasoning = (
-                "LLM judge backend is unavailable; used local heuristic fallback. "
-                f"overlap={overlap:.2f}, verdict={verdict.value}."
-            )
+            error_msg = "LLM judge backend is not initialized - skipping evaluation"
+            print(f"Warning: {error_msg}")
             return JudgmentReport(
-                verdict=verdict,
-                reasoning=reasoning,
-                composite_score=composite,
-                dimensions=dimensions,
+                verdict=None,
+                reasoning=error_msg,
+                composite_score=0.0,
                 checklist_version=self._checklist_version,
-                evaluator_model=self.model_name or "heuristic-fallback",
+                evaluator_model=self.model_name,
             )
 
         # Handle empty / "I don't know" answers
